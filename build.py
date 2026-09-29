@@ -223,3 +223,6 @@ for mode in ('pc','mobile'):
 
 Path('public/index.html').write_text(Path('index.html').read_text(encoding='utf-8'), encoding='utf-8')
 print('GON Rendicontazione build v2 completata')
+
+from timer_integration import install_timer
+install_timer(OUT)
