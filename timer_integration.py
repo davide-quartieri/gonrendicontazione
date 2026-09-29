@@ -1,4 +1,4 @@
-"""Add the optional timer to existing generated PC/mobile pages.
+"""Integrate the mobile recorder and PC/mobile timer activity management.
 Fail on structural drift instead of publishing a silently incomplete build.
 """
 from hashlib import sha256
@@ -10,18 +10,22 @@ import shutil
 import subprocess
 import tempfile
 
-VERSION = 'timer-1.0.0'
+VERSION = 'timer-1.1.0'
 
 
 def patch_page(html: str) -> str:
     for token in ('id="ore"', 'async function loadCurrentProfile()', '</body>'):
         if token not in html:
             raise RuntimeError(f'Timer integration: required base marker missing: {token}')
-    if 'activity-timer.js' in html:
-        return html
     # The role-aware enter() initializes currentUser, not the legacy user variable.
     html = html.replace('created_by:user.id', 'created_by:currentUser.id')
     script = f'<script src="assets/activity-timer.js?v={VERSION}"></script>\n'
+    if 'activity-timer.js' in html:
+        pattern = r'<script\b[^>]*\bsrc=[\"\x27][^\"\x27]*activity-timer\.js[^\"\x27]*[\"\x27][^>]*>\s*</script>'
+        html, count = re.subn(pattern, lambda _: script, html, flags=re.IGNORECASE)
+        if count != 1:
+            raise RuntimeError('Expected exactly one timer asset tag')
+        return html
     return html.replace('</body>', script + '</body>', 1)
 
 
@@ -44,6 +48,9 @@ def install_timer(out: Path) -> None:
     source = Path(__file__).resolve().parent / 'assets' / 'activity-timer.js'
     if not source.is_file():
         raise RuntimeError('Timer asset missing from repository')
+    js = source.read_text(encoding='utf-8')
+    if f"const VERSION = '{VERSION}';" not in js:
+        raise RuntimeError('Timer JavaScript version does not match integration version')
     target = out / 'assets'
     target.mkdir(parents=True, exist_ok=True)
     shutil.copy2(source, target / source.name)
@@ -61,6 +68,9 @@ def install_timer(out: Path) -> None:
         'commit': os.environ.get('RENDER_GIT_COMMIT', ''),
         'asset_sha256': sha256(source.read_bytes()).hexdigest(),
         'inline_syntax_checked': bool(node),
+        'recorder_pages': ['mobile.html'],
+        'management_pages': ['pc.html', 'mobile.html'],
+        'supports_incomplete_deletion': True,
         'pages': ['pc.html', 'mobile.html'],
     }
     (out / 'timer-build.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
