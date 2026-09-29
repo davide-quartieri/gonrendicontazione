@@ -18,7 +18,7 @@ USER_STATUS_HTML = '''<div id="userStatus" class="head-user" title="Utente conne
 
 STATUS_CSS = r'''
 .head{position:relative}
-.head-user{margin-left:auto;display:flex;align-items:center;gap:9px;min-width:0;color:#fff;text-align:left}
+.head-user{margin-left:auto;display:flex;align-items:center;gap:9px;min-width:0;color:#fff;text-align:left}\n.head-user.floating-user-status{position:fixed;top:12px;right:12px;z-index:9999;background:#155f96;padding:8px 10px;border-radius:12px;box-shadow:0 8px 24px #0003}
 .head-user-copy{display:flex;flex-direction:column;min-width:0;line-height:1.15}
 .head-user-copy strong{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}
 .head-user-copy small{font-size:11px;opacity:.82;margin-top:2px}
@@ -52,6 +52,19 @@ function gonDisplayName(user,profile){
 function applyRoleUI(){
   const admin=currentRole==='admin';
   document.querySelectorAll('.admin-only').forEach(el=>el.classList.toggle('role-hidden',!admin));
+  if(typeof MODE!=='undefined' && MODE==='pc'){
+    ['stats','tabs','luigi','clienti','report'].forEach(id=>{
+      const el=$(id); if(el) el.classList.toggle('role-hidden',!admin);
+    });
+    document.querySelectorAll('h2').forEach(h=>{
+      if((h.textContent||'').trim()==='Ultime attività'){
+        const card=h.closest('.card'); if(card) card.classList.toggle('role-hidden',!admin);
+      }
+    });
+  }
+  if(typeof MODE!=='undefined' && MODE==='mobile'){
+    const stats=$('stats'); if(stats) stats.style.setProperty('display','none','important');
+  }
   const role=$('userRole');if(role)role.textContent=admin?'Amministratore':'User';
 }
 function updateUserStatus(profile){
@@ -127,7 +140,11 @@ def patch_common(html, mode):
     html=html.replace('<input id="pass" type="password" autocomplete="current-password">', '<input id="pass" name="password" type="password" autocomplete="current-password">'+REMEMBER_HTML)
 
     if 'id="userStatus"' not in html:
-        html=html.replace('</header>', USER_STATUS_HTML+'</header>', 1)
+        if '</header>' in html:
+            html=html.replace('</header>', USER_STATUS_HTML+'</header>', 1)
+        else:
+            floating=USER_STATUS_HTML.replace('class="head-user"', 'class="head-user floating-user-status"')
+            html=html.replace('<body>', '<body>'+floating, 1)
     if 'status-dot' not in html.split('</style>',1)[0]:
         html=html.replace('</style>', STATUS_CSS+'</style>', 1)
 
