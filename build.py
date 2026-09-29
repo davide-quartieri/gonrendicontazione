@@ -86,8 +86,8 @@ function askInitialRole(profile){
       box.querySelectorAll('button').forEach(b=>b.disabled=true);
       setConnectionStatus('syncing','Configurazione profilo...');
       const choice=btn.dataset.role;
-      const upd=await db.from('user_profiles').update({role:choice,role_confirmed:true}).eq('user_id',currentUser.id).eq('role_confirmed',false).select('display_name,role,role_confirmed').maybeSingle();
-      if(upd.error||!upd.data){
+      let upd;if(choice==='admin'){upd=await db.rpc('request_gon_admin')}else{upd=await db.from('user_profiles').update({role:'user',role_confirmed:true,requested_role:null}).eq('user_id',currentUser.id).eq('role_confirmed',false).select('display_name,role,role_confirmed,requested_role').maybeSingle()}
+      const updData=Array.isArray(upd&&upd.data)?upd.data[0]:upd&&upd.data;if(upd.error||!updData){
         const err=box.querySelector('#gonRoleChoiceErr');
         if(err)err.textContent='Impossibile configurare il profilo: '+(upd.error&&upd.error.message||'errore sconosciuto');
         box.querySelectorAll('button').forEach(b=>b.disabled=false);
@@ -95,7 +95,7 @@ function askInitialRole(profile){
         return;
       }
       overlay.remove();
-      resolve(upd.data);
+      if(choice==='admin'){alert('Richiesta amministratore registrata. Il profilo resta User finché un amministratore non la approva.')} resolve(updData);
     }));
   });
 }
@@ -105,7 +105,7 @@ async function loadCurrentProfile(){
   if(!currentUser){currentRole='user';updateUserStatus(null);return}
   let profile=null;
   try{
-    const q=await db.from('user_profiles').select('display_name,role,role_confirmed').eq('user_id',currentUser.id).maybeSingle();
+    const q=await db.from('user_profiles').select('display_name,role,role_confirmed,requested_role').eq('user_id',currentUser.id).maybeSingle();
     if(!q.error&&q.data){profile=q.data}
     else if(!q.error&&!q.data){
       const display=gonDisplayName(currentUser,null);
