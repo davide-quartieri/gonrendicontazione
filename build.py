@@ -72,19 +72,47 @@ function updateUserStatus(profile){
   if(name){name.textContent=gonDisplayName(currentUser,profile);name.title=currentUser&&currentUser.email||''}
   applyRoleUI();
 }
+function askInitialRole(profile){
+  return new Promise(resolve=>{
+    const existing=document.getElementById('gonRoleChoice'); if(existing)existing.remove();
+    const overlay=document.createElement('div');
+    overlay.id='gonRoleChoice';
+    overlay.style.cssText='position:fixed;inset:0;z-index:100000;background:rgba(15,23,42,.55);display:grid;place-items:center;padding:20px';
+    const box=document.createElement('div');
+    box.style.cssText='width:min(440px,100%);background:#fff;border-radius:18px;padding:24px;box-shadow:0 24px 60px #0005;color:#182232';
+    box.innerHTML='<h2 style="margin:0 0 8px">Tipo di profilo GON</h2><p style="margin:0 0 18px;color:#667085">È il primo accesso di questo profilo. Scegli il tipo di accesso.</p><div style="display:grid;gap:10px"><button type="button" data-role="user" style="padding:13px;border:1px solid #cfd8e3;border-radius:11px;background:#fff;font-weight:700;cursor:pointer">User normale</button><button type="button" data-role="admin" style="padding:13px;border:0;border-radius:11px;background:#155f96;color:#fff;font-weight:700;cursor:pointer">Amministratore</button></div><p id="gonRoleChoiceErr" style="margin:12px 0 0;color:#b42318;font-size:13px"></p>';
+    overlay.appendChild(box); document.body.appendChild(overlay);
+    box.querySelectorAll('button[data-role]').forEach(btn=>btn.addEventListener('click',async()=>{
+      box.querySelectorAll('button').forEach(b=>b.disabled=true);
+      setConnectionStatus('syncing','Configurazione profilo...');
+      const choice=btn.dataset.role;
+      let upd;if(choice==='admin'){upd=await db.rpc('request_gon_admin')}else{upd=await db.from('user_profiles').update({role:'user',role_confirmed:true,requested_role:null}).eq('user_id',currentUser.id).eq('role_confirmed',false).select('display_name,role,role_confirmed,requested_role').maybeSingle()}
+      const updData=Array.isArray(upd&&upd.data)?upd.data[0]:upd&&upd.data;if(upd.error||!updData){
+        const err=box.querySelector('#gonRoleChoiceErr');
+        if(err)err.textContent='Impossibile configurare il profilo: '+(upd.error&&upd.error.message||'errore sconosciuto');
+        box.querySelectorAll('button').forEach(b=>b.disabled=false);
+        setConnectionStatus(navigator.onLine?'online':'offline',navigator.onLine?'Cloud sincronizzato':'Offline');
+        return;
+      }
+      overlay.remove();
+      if(choice==='admin'){alert('Richiesta amministratore registrata. Il profilo resta User finché un amministratore non la approva.')} resolve(updData);
+    }));
+  });
+}
 async function loadCurrentProfile(){
   const result=await db.auth.getUser();
   currentUser=result&&result.data&&result.data.user||null;
   if(!currentUser){currentRole='user';updateUserStatus(null);return}
   let profile=null;
   try{
-    const q=await db.from('user_profiles').select('display_name,role').eq('user_id',currentUser.id).maybeSingle();
+    const q=await db.from('user_profiles').select('display_name,role,role_confirmed,requested_role').eq('user_id',currentUser.id).maybeSingle();
     if(!q.error&&q.data){profile=q.data}
     else if(!q.error&&!q.data){
       const display=gonDisplayName(currentUser,null);
-      const ins=await db.from('user_profiles').insert({user_id:currentUser.id,display_name:display,role:'user'}).select('display_name,role').maybeSingle();
+      const ins=await db.from('user_profiles').insert({user_id:currentUser.id,display_name:display,role:'user',role_confirmed:false}).select('display_name,role,role_confirmed').maybeSingle();
       if(!ins.error&&ins.data)profile=ins.data;
     }
+    if(profile&&profile.role_confirmed===false)profile=await askInitialRole(profile);
   }catch(e){console.warn('Profilo utente non disponibile',e)}
   currentRole=profile&&profile.role==='admin'?'admin':'user';
   updateUserStatus(profile);
