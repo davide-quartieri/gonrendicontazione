@@ -3,7 +3,7 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
 const source=fs.readFileSync(process.argv[2],'utf8');
 const checks=[];
 async function test(name,fn){await fn();checks.push(name);}
-function extract(name){const re=new RegExp('\\n (?:async )?function '+name+'\\([^\\n]*[\\s\\S]*?(?=\\n (?:async )?function |\\n window\\.GonCommercial)');const m=source.match(re);assert.ok(m,'Function '+name);return m[0];}
+function extract(name){const re=new RegExp('\\n (?:async )?function '+name+'\\([^\\n]*[\\s\\S]*?(?=\\n (?:async )?function |\\n const \\$|\\n window\\.GonCommercial)');const m=source.match(re);assert.ok(m,'Function '+name);return m[0];}
 const raw=source.match(/const TARIFF_CATALOG = (\[[\s\S]*?\]);/);assert.ok(raw,'catalog');
 const catalog=JSON.parse(raw[1]);
 const seedCtx={};vm.createContext(seedCtx);vm.runInContext(extract('tariffSeed'),seedCtx);
