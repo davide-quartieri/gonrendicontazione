@@ -16,6 +16,8 @@ def install_proforma_v3(out):
     ui=(assets/'commercial.js').read_text(encoding='utf-8')
     ui=one(ui,"api().rpc('gon_client_billing',","api().rpc('gon_proforma_v3',")
     hook=(ROOT/'assets/proforma-admin-v3.js').read_text(encoding='utf-8')
+    # Selecting an uncommitted grouping command is not editing the pricing form.
+    hook=one(hook,"select.id='gvTeamEntries';","select.id='gvTeamEntries';select.oninput=select.onchange=e=>e.stopPropagation();")
     ui=one(ui,' window.GonCommercial=Object.freeze({version:VERSION});',hook+'\n window.GonCommercial=Object.freeze({version:VERSION,proformaVersion:"'+VERSION+'"});')
     (assets/'commercial.js').write_text(ui,encoding='utf-8')
     for name in ('macroarea-catalog.js','proforma-document-v3.js'):
