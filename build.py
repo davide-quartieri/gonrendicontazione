@@ -56,12 +56,16 @@ function applyRoleUI(){
     ['stats','tabs','luigi','clienti','report'].forEach(id=>{
       const el=$(id); if(el) el.classList.toggle('role-hidden',!admin);
     });
-    document.querySelectorAll('h2').forEach(h=>{
-      if((h.textContent||'').trim()==='Ultime attività'){
-        const card=h.closest('.card'); if(card) card.classList.toggle('role-hidden',!admin);
-      }
-    });
   }
+  document.querySelectorAll('h2').forEach(h=>{
+    if((h.textContent||'').trim()==='Ultime attività'){
+      const card=h.closest('.card');
+      if(card){
+        card.classList.add('admin-only');
+        card.classList.toggle('role-hidden',!admin);
+      }
+    }
+  });
   if(typeof MODE!=='undefined' && MODE==='mobile'){
     const stats=$('stats'); if(stats) stats.style.setProperty('display','none','important');
   }
@@ -200,6 +204,15 @@ def patch_common(html, mode):
     html=html.replace('</body>', REMEMBER_PATCH+'</body>')
     return html
 
+def protect_latest_activities(html):
+    # Mark every card headed "Ultime attività" admin-only before the first paint.
+    pattern = r'(<div\s+class="card)([^"]*"[^>]*>\s*<h2>Ultime attività</h2>)'
+    html, count = re.subn(pattern, r'\1 admin-only role-hidden\2', html, count=1, flags=re.IGNORECASE)
+    if count == 0 and 'Ultime attività' in html:
+        # Runtime guard still applies; log structural drift instead of silently assuming it matched.
+        print('WARN: Ultime attività found but build-time admin marker did not match')
+    return html
+
 def patch_pc(html):
     html=html.replace('<div id="stats" class="stats"></div>', '<div id="stats" class="stats admin-only"></div>', 1)
     html=html.replace('<nav id="tabs" class="tabs pc-only">', '<nav id="tabs" class="tabs pc-only admin-only">', 1)
@@ -215,6 +228,7 @@ def patch_mobile(html):
 
 def patch(html, mode):
     html=patch_common(html,mode)
+    html=protect_latest_activities(html)
     return patch_pc(html) if mode=='pc' else patch_mobile(html)
 
 for mode in ('pc','mobile'):
