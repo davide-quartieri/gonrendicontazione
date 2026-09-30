@@ -94,3 +94,5 @@ def finalize_monthly(out):
     install_pricing_lifecycle(out)
     from tariff_diagnostics_integration import install_tariff_diagnostics
     install_tariff_diagnostics(out)
+    from proforma_v3_integration import install_proforma_v3
+    install_proforma_v3(out)
