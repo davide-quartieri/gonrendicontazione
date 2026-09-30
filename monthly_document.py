@@ -49,9 +49,10 @@ WORKBOOK = r'''
   if(d.activities.length)acts['!autofilter']={ref:'A3:F'+(d.activities.length+3)};
   X.utils.book_append_sheet(wb,acts,'Attivita');return wb;
  }
- function buildHtml(report){return report?.document?.billing_basis==='client_period'?monthlyBuildHtml(report):legacyBuildHtml(report);}
+ function hasVatDocument(report){const d=report?.document;return !!d&&(d.billing_basis==='client_period'||Object.prototype.hasOwnProperty.call(d,'vat_rate'));}
+ function buildHtml(report){return hasVatDocument(report)?monthlyBuildHtml(report):legacyBuildHtml(report);}
  function excel(report){
-  if(report?.document?.billing_basis!=='client_period')return legacyExcel(report);
+  if(!hasVatDocument(report))return legacyExcel(report);
   window.XLSX.writeFile(monthlyWorkbook(report),filename(report)+'.xlsx');
  }
 '''
