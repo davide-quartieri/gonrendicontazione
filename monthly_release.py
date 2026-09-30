@@ -92,3 +92,5 @@ def finalize_monthly(out):
     install_billing_groups(out)
     from pricing_lifecycle_integration import install_pricing_lifecycle
     install_pricing_lifecycle(out)
+    from tariff_diagnostics_integration import install_tariff_diagnostics
+    install_tariff_diagnostics(out)
