@@ -1,4 +1,4 @@
-"""Build-only openpyxl template. It never includes customer or activity data."""
+"""Build-only openpyxl template; no customer or activity data."""
 from pathlib import Path
 from io import BytesIO
 from base64 import b64encode, b64decode
@@ -18,7 +18,6 @@ OUT=Path(sys.argv[1]) if len(sys.argv)>1 else Path('public')
 OUT.mkdir(parents=True,exist_ok=True)
 NAVY='123D5B'; BLUE='155F96'; TEAL='168B8A'; PALE='EFF6FA'; INK='182C3B'; MUTED='667585'; IMPORT='28744B'; ORANGE='B86A12'; PURPLE='7661A4'
 wb=Workbook(); wb.remove(wb.active)
-# Reuse the approved logo from the application, without recreating it.
 html=(OUT/'pc.html').read_text(encoding='utf-8')
 match=re.search(r'<img\b[^>]*class="logo"[^>]*src="data:image/[^;]+;base64,([^"]+)"',html)
 if not match: raise RuntimeError('Approved GON logo not found in pc.html')
@@ -64,12 +63,12 @@ def setup(name,widths,end):
 
 def table(ws,headers,nums=(),pct=(),dates=()):
     for i,h in enumerate(headers,1):
-        c=ws.cell(8,i,h);c.fill=PatternFill('solid',fgColor=NAVY);c.font=Font(name='Calibri',size=10,bold=True,color='FFFFFF');c.alignment=Alignment(wrap_text=True,vertical='center')
+        c=ws.cell(8,i,h);c.fill=PatternFill('solid',fgColor=NAVY);c.font=Font(name='Calibri',size=10,bold=True,color='FFFFFF');c.alignment=Alignment(wrap_text=True,vertical='center',indent=1)
     ws.row_dimensions[8].height=30
     for r in (9,10,11):
         ws.row_dimensions[r].height=32
         for i in range(1,len(headers)+1):
-            c=ws.cell(r,i);c.fill=PatternFill('solid',fgColor='F1F6FA' if r==10 else 'FFFFFF');c.font=Font(name='Calibri',size=11,color=IMPORT if ws.title=='Attivita' else '000000');c.alignment=Alignment(wrap_text=True,vertical='center')
+            c=ws.cell(r,i);c.fill=PatternFill('solid',fgColor='F1F6FA' if r==10 else 'FFFFFF');c.font=Font(name='Calibri',size=11,color=IMPORT if ws.title=='Attivita' else '000000');c.alignment=Alignment(wrap_text=True,vertical='center',indent=1)
             if i in nums:c.number_format='0.00##';c.alignment=Alignment(horizontal='right',vertical='center')
             if i in pct:c.number_format='0.0%';c.alignment=Alignment(horizontal='right',vertical='center')
             if i in dates:c.number_format='dd/mm/yyyy'
@@ -78,9 +77,9 @@ def table(ws,headers,nums=(),pct=(),dates=()):
     ws.freeze_panes='D9' if ws.title=='Attivita' else 'B9';ws.auto_filter.ref=f'A8:{L(len(headers))}10';ws.print_title_rows='1:8';ws.print_area=f'A1:{L(len(headers))}12'
 
 D=setup('Dashboard',[3]+[9]*15,16)
-A=setup('Attivita',[13,24,30,15,42,58,12,13,19,16,25],11)
+A=setup('Attivita',[13,24,30,15,42,58,12,13,19,16,25],10)
 M=setup('Macroaree',[45,14,15,15,15,15,14,22],8)
-C=setup('Clienti',[44,14,15,15,15,15,14,22,34],9)
+C=setup('Clienti',[44,14,15,15,15,15,14,22,34],8)
 table(A,['Data','Dipendente','Cliente / cantiere','Tipo ore','Macroarea','Descrizione','Ore','Origine','Stato','Ore timer originali','ID attività'],nums=(7,10),dates=(1,))
 A.column_dimensions['K'].hidden=True;A.page_setup.paperSize=A.PAPERSIZE_A3
 table(M,['Macroarea','Attività','Ore totali','Cantiere (h)','Viaggio (h)','Ufficio (h)','Quota ore','Ore da completare'],nums=(3,4,5,6,8),pct=(7,))
@@ -111,7 +110,7 @@ pie.dLbls=DataLabelList();pie.dLbls.showPercent=True;pie.dLbls.position='bestFit
 pie.anchor=TwoCellAnchor(_from=AnchorMarker(col=10,row=17),to=AnchorMarker(col=16,row=36));D.add_chart(pie)
 block(D,'B45:P46','Inclusione attività incomplete', 'FFF3DF',11,False,ORANGE)
 block(D,'B48:P49','Le macroaree PROGRAMMATO / PROGRAMMATA restano distinte dalle macroaree ordinarie. I totali rappresentano le ore registrate nei filtri selezionati.',None,11,False,MUTED)
-block(D,'B51:P52','Dati: archivio GON. Tutti i riepiloghi si riferiscono al foglio Attivita; nessun dato dimostrativo viene aggiunto alle esportazioni.',None,10,False,MUTED)
+block(D,'B51:P52','Fonte: https://gon-rendicontazione-live.onrender.com | Archivio GON, filtri in intestazione. I riepiloghi si riferiscono al foglio Attivita.',None,10,False,MUTED)
 D.print_area='A1:P53';D.page_setup.fitToHeight=1
 wb.calculation.fullCalcOnLoad=True;wb.calculation.forceFullCalc=True
 buf=BytesIO();wb.save(buf)
