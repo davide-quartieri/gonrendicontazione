@@ -88,3 +88,5 @@ def finalize_monthly(out):
                 existing.update({'project_assignment_pages': [], 'billing_basis': 'client_period', 'editable_vat': True})
             p.write_text(json.dumps(existing, indent=2), encoding='utf-8')
     print('MONTHLY RELEASE VERIFIED: ' + json.dumps(manifest))
+    from billing_group_integration import install_billing_groups
+    install_billing_groups(out)
