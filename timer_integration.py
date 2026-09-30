@@ -9,7 +9,7 @@ import subprocess
 import tempfile
 
 VERSION = 'timer-1.1.0'
-FORM_GUARD_VERSION = 'form-state-guard-1.0.0'
+FORM_GUARD_VERSION = 'form-state-guard-1.1.0'
 HISTORY_VERSION = 'personal-history-1.0.0'
 
 
