@@ -4,8 +4,8 @@
  */
 (() => {
   'use strict';
-  const VERSION = 'timer-1.1.0';
-  const MOBILE = typeof MODE !== 'undefined' && MODE === 'mobile';
+  const VERSION = 'timer-1.1.1';
+  const MOBILE = (typeof MODE !== 'undefined' && MODE === 'mobile') || /\/mobile(?:\.html)?\/?$/.test(location.pathname);
   const PREFIX = 'gon.activityTimer.v1.';
   const TYPES = ['Cantiere', 'Viaggio', 'Ufficio'];
   const MACROS = ['Rilievo in campo', 'Elaborazione rilievo', 'Assistenza cliente', 'Attivit\u00e0 amministrative', 'Corso', 'Varie'];
@@ -81,7 +81,7 @@
     section.prepend(panel);$('gonTimerRetry').onclick=()=>sync();
     // No timer clock, start or stop controls are mounted on PC.
     if(MOBILE){
-      root=document.createElement('div');root.id='gonActivityTimer';root.className='card gon-timer';root.hidden=true;
+      root=document.createElement('div');root.id='gonActivityTimer';root.className='card gon-timer';root.hidden=false;
       root.innerHTML=`<div class="timer-top"><h2>Timer attivit\u00e0</h2><span class="timer-note">Facoltativo</span></div>
         <div id="gonTimerClock" class="timer-clock" role="timer">00:00:00</div><p id="gonTimerStarted" class="timer-note"></p>
         <div class="timer-fields"><div class="field"><label for="gonTimerType">Tipo ore</label><select id="gonTimerType"></select></div>
@@ -94,9 +94,9 @@
     makeDialog();return true;
   }
   function renderClock() {
-    if(!root)return;root.hidden=!actor;if(!actor)return;
+    if(!root)return;root.hidden=false;if(!actor){$('gonTimerStart').disabled=true;$('gonTimerStop').disabled=true;$('gonTimerStarted').textContent='Inizializzazione account...';return;}
     try {
-      const a=read(actor.id).active;
+      $('gonTimerStart').disabled=false;$('gonTimerStop').disabled=false;const a=read(actor.id).active;
       $('gonTimerStart').hidden=Boolean(a);$('gonTimerStop').hidden=!a;
       $('gonTimerType').disabled=$('gonTimerClient').disabled=Boolean(a);
       $('gonTimerClock').textContent=a?duration((Date.now()-Date.parse(a.started_at))/1000):'00:00:00';
@@ -239,23 +239,42 @@
     epoch++;actor=next;rows=[];customers=[];message='';isError=false;if(dialog?.open)dialog.close();render();connection();
     if(actor)setTimeout(()=>sync(),0);
   }
+  async function waitForClient(timeoutMs=20000) {
+    const started=Date.now();
+    while(Date.now()-started<timeoutMs){
+      const c=client();
+      if(c&&c.auth)return c;
+      await new Promise(resolve=>setTimeout(resolve,100));
+    }
+    return null;
+  }
   async function boot() {
     if(!mount())return;
+    renderClock();
     if(typeof setConnectionStatus==='function'){window.gonTimerOriginalStatus=setConnectionStatus;setConnectionStatus=function(state,label){lastConnection={state,label};connection();};}
     // Route timer deletions in the legacy register to the same safe operation.
     if(typeof delEntry==='function'){
       const originalDelete=delEntry;
       delEntry=async function(id){if(/^timer_[0-9a-f-]{36}$/.test(id))return requestDelete(id);return originalDelete(id);};window.delEntry=delEntry;
     }
-    const c=client();if(!c)return;
+    const c=await waitForClient();
+    if(!c){
+      if(MOBILE){$('gonTimerStarted').textContent='Timer non inizializzato. Ricarica la pagina.';$('gonTimerStart').disabled=true;}
+      notice('Connessione account non inizializzata.',true);
+      return;
+    }
     c.auth.onAuthStateChange((_event,session)=>changedSession(session));
-    try{const r=await c.auth.getSession();changedSession(r.data.session);}catch(e){notice(errorText(e),true);}
+    try{
+      const r=await c.auth.getSession();
+      changedSession(r.data.session);
+      if(!actor && typeof currentUser!=='undefined' && currentUser)changedSession({user:currentUser});
+    }catch(e){notice(errorText(e),true);}
     if(MOBILE)setInterval(renderClock,1000);
     setInterval(()=>{if(actor)sync();},15000);
     window.addEventListener('online',()=>sync());window.addEventListener('offline',connection);
     window.addEventListener('storage',e=>{if(actor&&e.key===key(actor.id)){render();connection();}});
-    window.addEventListener('pageshow',()=>{render();if(actor)sync();});
-    document.addEventListener('visibilitychange',()=>{if(!document.hidden){render();if(actor)sync();}});
+    window.addEventListener('pageshow',async()=>{if(!actor){try{const s=await c.auth.getSession();changedSession(s.data.session);}catch{}}render();if(actor)sync();});
+    document.addEventListener('visibilitychange',async()=>{if(!document.hidden){if(!actor){try{const s=await c.auth.getSession();changedSession(s.data.session);}catch{}}render();if(actor)sync();}});
   }
   window.GonActivityTimer=Object.freeze({version:VERSION,mobileRecorder:MOBILE});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
