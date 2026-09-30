@@ -99,3 +99,5 @@ def install_timer(out: Path) -> None:
     print('GON UI BUILD: ' + json.dumps(manifest))
     from report_integration import install_reports
     install_reports(out)
+    from commercial_integration import install_commercial
+    install_commercial(out)
