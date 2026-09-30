@@ -33,7 +33,6 @@ def patch_page(html: str) -> str:
         if token not in html:
             raise RuntimeError(f'Integration: required base marker missing: {token}')
     html = html.replace('created_by:user.id', 'created_by:currentUser.id')
-    # Guard first so the legacy 15-second load() cannot erase in-progress form fields.
     html = _install_tag(html, 'form-state-guard.js', FORM_GUARD_VERSION)
     html = _install_tag(html, 'personal-history.js', HISTORY_VERSION)
     html = _install_tag(html, 'activity-timer.js', VERSION)
@@ -66,7 +65,6 @@ def install_timer(out: Path) -> None:
     target.mkdir(parents=True, exist_ok=True)
     node = shutil.which('node')
     hashes = {}
-
     for name, (_version, marker) in asset_specs.items():
         source = root / 'assets' / name
         if not source.is_file():
@@ -78,13 +76,11 @@ def install_timer(out: Path) -> None:
             subprocess.run([node, '--check', str(source)], check=True)
         shutil.copy2(source, target / name)
         hashes[name] = sha256(source.read_bytes()).hexdigest()
-
     for mode in ('pc', 'mobile'):
         path = out / f'{mode}.html'
         html = patch_page(path.read_text(encoding='utf-8'))
         validate_js(html, mode)
         path.write_text(html, encoding='utf-8')
-
     manifest = {
         'feature': 'gon-ui-integrations',
         'commit': os.environ.get('RENDER_GIT_COMMIT', ''),
@@ -101,3 +97,5 @@ def install_timer(out: Path) -> None:
     }
     (out / 'timer-build.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
     print('GON UI BUILD: ' + json.dumps(manifest))
+    from report_integration import install_reports
+    install_reports(out)
