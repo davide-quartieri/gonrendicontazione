@@ -90,3 +90,5 @@ def finalize_monthly(out):
     print('MONTHLY RELEASE VERIFIED: ' + json.dumps(manifest))
     from billing_group_integration import install_billing_groups
     install_billing_groups(out)
+    from pricing_lifecycle_integration import install_pricing_lifecycle
+    install_pricing_lifecycle(out)
