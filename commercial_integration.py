@@ -74,7 +74,6 @@ def install_commercial(out):
     for mode in ('pc', 'mobile'):
         path = out / f'{mode}.html'
         html = path.read_text(encoding='utf-8')
-        # Add only operational project_id to the existing manual-entry payload.
         needle = "hours:+$('hours').value"
         html = replace_one(html, needle, needle + ",project_id:(document.getElementById('gonProjectSelect')?.value||null)", f'{mode} manual entry')
         pattern = r'<script\b[^>]*\bsrc="[^"\n]*form-state-guard\.js[^"\n]*"[^>]*>\s*</script>'
@@ -107,3 +106,5 @@ def install_commercial(out):
                 'hashes': {p.name: sha256(p.read_bytes()).hexdigest() for p in assets.glob('*.js')}}
     (out / 'commercial-build.json').write_text(json.dumps(manifest, indent=2), encoding='utf-8')
     print('COMMERCIAL BUILD: ' + json.dumps(manifest))
+    from monthly_release import finalize_monthly
+    finalize_monthly(out)
