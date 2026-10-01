@@ -1,6 +1,5 @@
 /* Injected inside the existing commercial module after diagnostics, before boot. */
- let v3ProfileDialog=null,v3MacroDialog=null,v3Profile=null;
- const V3_FIELDS=[['legal_name','Ragione sociale / nome e cognome'],['vat_number','Partita IVA'],['tax_code','Codice fiscale'],['address','Indirizzo e numero civico'],['postcode','CAP'],['city','Comune'],['province','Provincia'],['country','Paese (IT, ...)'],['pec','PEC'],['sdi_code','Codice destinatario'],['email','Email'],['phone','Telefono'],['contact','Referente cliente'],['payment_terms','Condizioni di pagamento']];
+ let v3MacroDialog=null;
  function v3Catalog(items){if(!Array.isArray(items)||!items.length)return;TARIFF_CATALOG.splice(0,TARIFF_CATALOG.length,...items.flatMap(m=>m.allowed_types.map(t=>[m.name,t,m.billing_kind])));}
  document.addEventListener('gon:catalog-updated',e=>v3Catalog(e.detail));
  const v3OriginalRpc=rpc;
@@ -11,17 +10,12 @@
  };
  const v3OriginalReferences=references;
  references=async function(selected){await window.GonCatalog.refresh();v3Catalog(window.GonCatalog.items());return v3OriginalReferences(selected);};
- function v3Error(e){say(e.message||'Operazione non riuscita.',true);if(v3ProfileDialog?.open)$('gvProfileError').textContent=e.message;if(v3MacroDialog?.open)$('gvMacroError').textContent=e.message;}
+ function v3Error(e){say(e.message||'Operazione non riuscita.',true);if(v3MacroDialog?.open)$('gvMacroError').textContent=e.message;}
  function v3Ready(){if(!allowed||!actor)throw new Error('Accesso amministratore richiesto.');if(editorDirty)throw new Error('Salva prima le modifiche alla bozza.');}
  function v3MakeSettings(){
   const tools=document.createElement('div');tools.className='gc-actions';
-  const pb=document.createElement('button');pb.id='gvProfile';pb.type='button';pb.className='btn light';pb.textContent='Anagrafica completa cliente';pb.onclick=()=>v3OpenProfile().catch(v3Error);
   const mb=document.createElement('button');mb.id='gvMacros';mb.type='button';mb.className='btn light';mb.textContent='Nuova macroarea';mb.onclick=()=>{if(allowed){$('gvMacroError').textContent='';v3MacroDialog.showModal();}};
-  tools.append(pb,mb);root.querySelector('.card').append(tools);
-  v3ProfileDialog=makeDialog('gvProfileDialog','Anagrafica cliente e Cassa',`<form id="gvProfileForm"><p class="gc-note">Dati condivisi dai cantieri dello stesso cliente (Gedit: Vighizzolo e Calcinato). Nessun documento emesso viene modificato. Per una bozza esistente usa Aggiorna anagrafica nella bozza.</p><div class="gc-grid">${V3_FIELDS.map(([k,label])=>'<div class="field"><label for="gvP_'+k+'">'+label+'</label><input id="gvP_'+k+'" maxlength="500"'+(k==='legal_name'?' required':'')+'></div>').join('')}<div class="field"><label for="gvPCassa">Cassa geometri % per le nuove proforme</label><input id="gvPCassa" type="number" min="0" max="100" step="0.0001" required></div><div class="field"><label><input id="gvPExpenses" type="checkbox" style="width:18px"> Spese imponibili soggette anche a Cassa</label></div></div><p class="gc-note">Cassa aggiunta prima dell\u2019IVA. Verificare la base e il trattamento applicabili. Prezzi al netto di Cassa e IVA.</p><p id="gvProfileError" class="gc-error" role="alert"></p><div class="gc-actions"><button class="btn" id="gvPSave" type="submit">Salva anagrafica</button><button class="btn light" id="gvPCancel" type="button">Chiudi</button></div></form>`);
-  $('gvPCancel').onclick=()=>v3ProfileDialog.close();$('gvProfileForm').onsubmit=async e=>{e.preventDefault();if(!allowed||!v3Profile)return;const b=$('gvPSave');if(b.disabled)return;b.disabled=true;try{
-   const data={};V3_FIELDS.forEach(([k])=>data[k]=$('gvP_'+k).value.trim());v3Profile=await rpc('profile_save',{client_id:v3Profile.client_id,version:v3Profile.version,legal_data:data,cassa_rate:Number($('gvPCassa').value),cassa_on_expenses:$('gvPExpenses').checked});v3ProfileDialog.close();say('Anagrafica salvata. Le copie esistenti non sono state modificate.');
-  }catch(err){v3Error(err);}finally{b.disabled=false;}};
+  tools.append(mb);root.querySelector('.card').append(tools);
   v3MacroDialog=makeDialog('gvMacroDialog','Crea nuova macroarea',`<form id="gvMacroForm"><div class="field"><label for="gvMacroName">Nome</label><input id="gvMacroName" required maxlength="120"></div><div class="field"><label for="gvMacroKind">Valorizzazione</label><select id="gvMacroKind"><option value="hour">Oraria</option><option value="monthly">Forfait mensile con attivita</option></select></div><p>Tipi di ore ammessi nel tariffario</p>${TYPES.map(t=>'<label style="display:inline-flex;gap:8px;margin:8px"><input type="checkbox" name="gvMacroType" value="'+t+'" checked style="width:18px"> '+t+'</label>').join('')}<p class="gc-note">Dopo la creazione configura le tariffe di ciascun cliente. Nessun prezzo viene inventato; le macroaree programmate restano a forfait.</p><p id="gvMacroError" class="gc-error" role="alert"></p><div class="gc-actions"><button id="gvMSave" class="btn" type="submit">Crea macroarea</button><button id="gvMCancel" class="btn light" type="button">Annulla</button></div></form>`);
   $('gvMCancel').onclick=()=>v3MacroDialog.close();$('gvMacroForm').onsubmit=async e=>{e.preventDefault();if(!allowed||!actor)return;const b=$('gvMSave');if(b.disabled)return;b.disabled=true;const stamp=epoch,owner=actor.id,abort=new AbortController(),timeout=setTimeout(()=>abort.abort(),15000);try{
    const types=[...v3MacroDialog.querySelectorAll('input[name=gvMacroType]:checked')].map(x=>x.value);if(!types.length)throw new Error('Seleziona almeno un tipo di ore.');
@@ -29,21 +23,15 @@
    await window.GonCatalog.refresh(true);v3Catalog(window.GonCatalog.items());v3MacroDialog.close();$('gvMacroName').value='';say('Macroarea creata: disponibile per PC, mobile, storico e timer. Configura il prezzo nelle condizioni cliente.');
   }catch(err){if(stamp===epoch)v3Error(err);}finally{clearTimeout(timeout);b.disabled=false;}};
  }
- async function v3OpenProfile(){
-  if(!allowed||!actor)throw new Error('Accesso amministratore richiesto.');const cid=currentReport&&reportDialog?.open?currentReport.document.client.id:$('gcClient').value;
-  if(!cid)throw new Error('Seleziona un cliente.');v3Profile=await rpc('profile_get',{client_id:cid});
-  V3_FIELDS.forEach(([k])=>$('gvP_'+k).value=v3Profile.legal_data?.[k]||'');$('gvPCassa').value=v3Profile.cassa_rate??5;$('gvPExpenses').checked=v3Profile.cassa_on_expenses!==false;$('gvProfileError').textContent='';v3ProfileDialog.showModal();
- }
  const v3OriginalMount=mount;
  mount=function(){const ok=v3OriginalMount();if(ok){v3MakeSettings();button.textContent='Rendiconti / Proforma';root.querySelector('h2').textContent='Rendiconti e fatture proforma';}return ok;};
  const v3OriginalMakeReport=makeReportDialog;
  makeReportDialog=function(){
   v3OriginalMakeReport();reportDialog.querySelector('h2').textContent='Rendiconto / Fattura proforma';
-  const extras=document.createElement('div');extras.id='gvReportExtras';extras.innerHTML='<p class="gc-banner">FATTURA PROFORMA - Documento non valido ai fini fiscali. Il documento viene dettagliato per giorno; i forfait non duplicano le ore addebitate.</p><p id="gvPartySnapshot" class="gc-note"></p><div class="gc-actions"><button id="gvEditParty" class="btn light" type="button">Anagrafica cliente</button><button id="gvRefreshParty" class="btn light" type="button">Aggiorna anagrafica nella bozza</button><button id="gvUpgrade" class="btn light" type="button">Aggiorna bozza a proforma con Cassa</button></div>';
+  const extras=document.createElement('div');extras.id='gvReportExtras';extras.innerHTML='<p class="gc-banner">FATTURA PROFORMA - Documento non valido ai fini fiscali. Il documento viene dettagliato per giorno; i forfait non duplicano le ore addebitate.</p><p id="gvPartySnapshot" class="gc-note"></p><div class="gc-actions"><button id="gvRefreshParty" class="btn light" type="button">Aggiorna anagrafica nella bozza</button><button id="gvUpgrade" class="btn light" type="button">Aggiorna bozza a proforma con Cassa</button></div>';
   reportDialog.querySelector('#gcReportTitle').after(extras);
   const cassa=document.createElement('div');cassa.id='gvCassaWrap';cassa.className='gc-grid';cassa.innerHTML='<div class="field"><label for="gvCassa">Cassa geometri %</label><input id="gvCassa" type="number" min="0" max="100" step="0.0001"></div><div class="field"><label><input id="gvCassaExpenses" type="checkbox" style="width:18px"> Spese imponibili soggette anche a Cassa</label></div>';$('gcTotals').before(cassa);
   const teams=document.createElement('div');teams.id='gvTeams';$('gcReportForm').after(teams);
-  $('gvEditParty').onclick=()=>v3OpenProfile().catch(v3Error);
   $('gvRefreshParty').onclick=()=>action('gvRefreshParty',async()=>{v3Ready();if(confirm('Aggiornare soltanto i dati del cliente nella bozza? Gli importi restano invariati.'))showReport(await rpc('report_profile_refresh',{id:currentReport.id,version:currentReport.version}));});
   $('gvUpgrade').onclick=()=>action('gvUpgrade',async()=>{v3Ready();if(confirm('Aggiornare questa bozza al nuovo modello con Cassa, date e anagrafica? Verranno rilette attivita e tariffe; le rettifiche delle righe saranno sostituite. Il documento non viene emesso.'))showReport(await rpc('report_upgrade',{id:currentReport.id,version:currentReport.version}));});
   $('gcRPreview').textContent='Proforma / Stampa PDF';$('gcRHtml').textContent='Scarica proforma';$('gcRExcel').textContent='Excel proforma';$('gcRIssue').textContent='Approva ed emetti proforma';
@@ -85,4 +73,4 @@
   showReport(await rpc('report_teams',{id:currentReport.id,version:currentReport.version,decisions}));await loadOverview();
  }
  const v3OriginalHide=hide;
- hide=function(){v3OriginalHide();v3Profile=null;for(const dialog of [v3ProfileDialog,v3MacroDialog]){if(dialog?.open)dialog.close();dialog?.querySelectorAll('input').forEach(x=>{if(x.type!=='checkbox')x.value='';});}$('gvPartySnapshot')?.replaceChildren();$('gvTeams')?.replaceChildren();};
+ hide=function(){v3OriginalHide();for(const dialog of [v3MacroDialog]){if(dialog?.open)dialog.close();dialog?.querySelectorAll('input').forEach(x=>{if(x.type!=='checkbox')x.value='';});}$('gvPartySnapshot')?.replaceChildren();$('gvTeams')?.replaceChildren();};
