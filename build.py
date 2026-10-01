@@ -27,6 +27,7 @@ STATUS_CSS = r'''
 .status-dot.syncing{background:#ffd24a}
 .status-dot.offline{background:#ff5b62}
 .admin-only.role-hidden{display:none!important}
+#stats{display:none!important}
 @keyframes gonBlink{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.78)}}
 @media(max-width:760px){
   .head{padding-top:54px!important}
@@ -53,7 +54,7 @@ function applyRoleUI(){
   const admin=currentRole==='admin';
   document.querySelectorAll('.admin-only').forEach(el=>el.classList.toggle('role-hidden',!admin));
   if(typeof MODE!=='undefined' && MODE==='pc'){
-    ['stats','tabs','luigi','clienti','report'].forEach(id=>{
+    ['tabs','luigi','clienti','report'].forEach(id=>{
       const el=$(id); if(el) el.classList.toggle('role-hidden',!admin);
     });
   }
@@ -214,7 +215,7 @@ def protect_latest_activities(html):
     return html
 
 def patch_pc(html):
-    html=html.replace('<div id="stats" class="stats"></div>', '<div id="stats" class="stats admin-only"></div>', 1)
+    html=html.replace('<div id="stats" class="stats"></div>', '<div id="stats" class="stats" style="display:none!important"></div>', 1)
     html=html.replace('<nav id="tabs" class="tabs pc-only">', '<nav id="tabs" class="tabs pc-only admin-only">', 1)
     html=html.replace('<section id="luigi" class="panel pc-only">', '<section id="luigi" class="panel pc-only admin-only">', 1)
     html=html.replace('<section id="clienti" class="panel pc-only">', '<section id="clienti" class="panel pc-only admin-only">', 1)
