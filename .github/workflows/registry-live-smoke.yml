@@ -1,0 +1,30 @@
+name: Registry live smoke checks
+on:
+  push:
+    branches: [feature/gon-management-registry]
+    paths: [.github/workflows/registry-live-smoke.yml]
+permissions:
+  contents: read
+jobs:
+  public-health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Verify live HTML, build version and assets (no login or business data)
+        run: |
+          python - <<'PY'
+          import urllib.request,json,hashlib
+          base='https://gon-rendicontazione-live.onrender.com/'
+          def get(path):
+              with urllib.request.urlopen(base+path,timeout=25) as r:
+                  assert r.status==200,(path,r.status)
+                  return r.read()
+          manifest=json.loads(get('registry-build.json'))
+          assert manifest['version']=='registry-1.0.0'
+          assert manifest['commit']=='e0c4e9da87fce976da2f91e9441e6b74ec4b5632',manifest['commit']
+          assert b'GON Management' in get('gestionale-clienti.html')
+          assert b'registry-readonly.js' in get('pc.html')
+          for name,digest in manifest['hashes'].items():
+              assert hashlib.sha256(get('assets/'+name)).hexdigest()==digest,name
+          print('LIVE HTTP CHECKS PASSED: expected commit, master page, readonly entrypoint and all 4 asset hashes. No authenticated request or business data accessed.')
+          PY
