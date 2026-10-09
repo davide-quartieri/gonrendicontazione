@@ -47,3 +47,5 @@ def install_proforma_v3(out):
     manifest={'version':VERSION,'commit':os.environ.get('RENDER_GIT_COMMIT',''),'cassa_before_vat':True,'daily_details':True,'customer_legal_snapshot':True,'admin_dynamic_macroareas':True,'team_rates':[450,900],'team_duration_requires_confirmation':True,'existing_snapshots_not_rewritten':True,'customer_registry_page':True,'proforma_profile_editor':False,'hashes':{p.name:sha256(p.read_bytes()).hexdigest() for p in assets.glob('*.js')}}
     (out/'proforma-v3-build.json').write_text(json.dumps(manifest,indent=2),encoding='utf-8')
     print('PROFORMA V3 VERIFIED: '+json.dumps(manifest))
+    from registry_integration import install_registry
+    install_registry(out)
