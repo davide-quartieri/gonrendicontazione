@@ -1,0 +1,26 @@
+name: Registry integration checks
+on:
+  push:
+    branches: [feature/gon-management-registry]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Build and run existing regression checks
+        run: python build.py
+      - name: Retain compiled public assets and sources
+        uses: actions/upload-artifact@v4
+        with:
+          name: gon-registry-verified
+          path: |
+            public/
+            assets/
+            registry_integration.py
+            proforma_v3_integration.py
+          retention-days: 7
