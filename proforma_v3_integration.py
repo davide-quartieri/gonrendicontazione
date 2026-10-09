@@ -49,3 +49,5 @@ def install_proforma_v3(out):
     print('PROFORMA V3 VERIFIED: '+json.dumps(manifest))
     from registry_integration import install_registry
     install_registry(out)
+    from hours_only_integration import install_hours_only
+    install_hours_only(out)
