@@ -1,0 +1,46 @@
+name: Hours-only integration checks
+on:
+  push:
+    branches: [feature/hours-only-management-master]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Build and existing regressions
+        run: python build.py
+      - name: Verify separation and readable catalog
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          root=Path('public')
+          for name in ('pc.html','mobile.html'):
+              s=(root/name).read_text()
+              for bad in ('id="clienti"','id="report"','addClient(','delClient(','registry-readonly.js','assets/commercial.js','gestionale-clienti.html'):
+                  assert bad not in s,(name,bad)
+              for good in ('id="add"','id="client"','id="refresh-clients"',"select('id,main,site,display,active')",'form-render-guard.js','personal-history.js','activity-timer.js'):
+                  assert good in s,(name,good)
+          assert '<script' not in (root/'gestionale-clienti.html').read_text()
+          for name in ('registry-ui.js','registry-online.js','registry-readonly.js','commercial.js'):
+              assert not (root/'assets'/name).exists(),name
+          assert json.loads((root/'hours-only-build.json').read_text())['customer_editor'] is False
+          print('HOURS ONLY CONTRACT CHECKS PASSED')
+          PY
+      - name: Retain output and sources
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: gon-hours-only-build
+          path: |
+            public/
+            hours_only_integration.py
+            proforma_v3_integration.py
+          retention-days: 7
