@@ -1,0 +1,55 @@
+name: Hours-only live verification
+on:
+  push:
+    branches: [feature/hours-only-management-master]
+    paths: [.github/workflows/hours-only-live.yml]
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Verify exact deployed pages without credentials or business writes
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, hashlib
+          from urllib.request import Request, urlopen
+          from urllib.error import HTTPError
+          base='https://gon-rendicontazione-live.onrender.com/'
+          def read(path):
+              with urlopen(Request(base+path,headers={'Cache-Control':'no-cache','User-Agent':'GON-Hours-Release-Verification'}),timeout=25) as r:
+                  assert r.status==200
+                  return r.read()
+          manifest=json.loads(read('hours-only-build.json'))
+          assert manifest['version']=='hours-only-1.0.0'
+          assert manifest['commit']=='4bcc446cee1b8a06841e30e2e6f437edf38790eb'
+          expected={'pc.html':'a2e71161342a3cf3ee01d92528fb597cee0f6b825eb5702ac72a47d6d4276bba','mobile.html':'2babe9bd7da860b79464d8581d50dcfc08836569017a0ebba5c0478d76071214'}
+          checks=[]
+          for page,digest in expected.items():
+              raw=read(page);html=raw.decode()
+              assert hashlib.sha256(raw).hexdigest()==digest
+              for x in ('id="clienti"','id="report"','addClient(','delClient(','assets/commercial.js','registry-readonly.js'):
+                  assert x not in html,(page,x)
+              for x in ('id="client"','id="refresh-clients"','async function addEntry','id,main,site,display,active','personal-history.js','activity-timer.js'):
+                  assert x in html,(page,x)
+              checks.append(page+': exact expected bytes, no registry or commercial UI, time entry and operational catalog present')
+          retired=read('gestionale-clienti.html').decode()
+          assert 'Anagrafiche gestite in GON Management' in retired
+          assert '<script' not in retired and '<form' not in retired
+          checks.append('Old registry URL is an informational retirement page without editor or login')
+          for p in ('assets/registry-online.js','assets/registry-ui.js','assets/commercial.js'):
+              try: read(p)
+              except HTTPError as e: assert e.code==404,(p,e.code)
+              else: raise AssertionError('Old admin script still published: '+p)
+          checks.append('Retired administrative scripts return 404')
+          result={'passed':True,'checks':checks,'commit':manifest['commit'],'business_data_touched':False,'authenticated_user_login_tested':False}
+          print(json.dumps(result,indent=2))
+          open('hours-only-live-verification.json','w').write(json.dumps(result,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gon-hours-only-live-verification
+          path: hours-only-live-verification.json
+          retention-days: 7
