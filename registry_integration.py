@@ -20,7 +20,8 @@ def install_registry(out):
     active_filter={}
     for mode in ('pc','mobile'):
         text=(out/(mode+'.html')).read_text(encoding='utf-8')
-        active_filter[mode]=bool(re.search(r"\.eq\(\s*['\"]active['\"]\s*,\s*true\s*\)",text))
+        # Existing renderer filters new-entry choices, retaining inactive clients for history.
+        active_filter[mode]="clients.filter(c=>c.active!==false).map" in text
         if not active_filter[mode]:raise RuntimeError('Active client filter not verified in '+mode+'; do not publish')
     (out/'gestionale-clienti.html').write_text(PAGE,encoding='utf-8')
     manifest={'version':VERSION,'commit':os.environ.get('RENDER_GIT_COMMIT',os.environ.get('GITHUB_SHA','')),'timesheet_registry_readonly':True,'active_client_filter':active_filter,'hashes':{name:sha256((assets/name).read_bytes()).hexdigest() for name in names}}
