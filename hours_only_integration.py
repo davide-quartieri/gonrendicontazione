@@ -18,7 +18,7 @@ def once(text, old, new):
 
 def replace_js_function(text, name, source):
     pattern = r'^(?:async )?function ' + re.escape(name) + r'\([^\n]*$'
-    text, n = re.subn(pattern, source, text, count=1, flags=re.M)
+    text, n = re.subn(pattern, lambda _m: source, text, count=1, flags=re.M)
     if n != 1:
         raise RuntimeError('Hours-only JS function marker mismatch: ' + name)
     return text
