@@ -233,7 +233,13 @@ def patch(html, mode):
     return patch_pc(html) if mode=='pc' else patch_mobile(html)
 
 for mode in ('pc','mobile'):
-    html=patch(download(f'{mode}.html'), mode)
+    raw=download(f'{mode}.html')
+    if mode=='pc':
+        for marker in ('ocrRows','id="luigi"','OCR','ocr','luigi'):
+            pos=raw.find(marker)
+            if pos>=0:
+                print('LUIGI SOURCE '+marker+': '+raw[max(0,pos-2500):pos+7000].replace('\\n',' '))
+    html=patch(raw, mode)
     (OUT/f'{mode}.html').write_text(html, encoding='utf-8')
 
 Path('public/index.html').write_text(Path('index.html').read_text(encoding='utf-8'), encoding='utf-8')
