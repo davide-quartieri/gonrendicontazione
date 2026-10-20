@@ -51,3 +51,5 @@ def install_proforma_v3(out):
     install_registry(out)
     from hours_only_integration import install_hours_only
     install_hours_only(out)
+    from gedit_packages_integration import install_gedit_packages
+    install_gedit_packages(out)
