@@ -29,7 +29,7 @@
   function rowSource(row){const text=row.textContent||'';return /\bTimer\b/i.test(text)?'timer':'manual';}
   function updateArchiveCount(panel){
     const badge=panel.querySelector('[data-gon-archive-count]'),page=$('gonHistoryPage')?.textContent||'';if(!badge)return;
-    const m=page.match(/·\s*(\d+)\s+attivit/i);badge.textContent=m?`${m[1]} attività`:'Storico';
+    const m=page.match(/·\s*(\d+)\s+attivit/i),next=m?`${m[1]} attività`:'Storico';if(badge.textContent!==next)badge.textContent=next;
   }
   function groupHistory(){
     historyScheduled=false;if(historyBusy)return;const panel=$('gonPersonalHistory'),list=$('gonHistoryList');if(!panel||!list)return;
@@ -41,13 +41,13 @@
       const groups=new Map();let visibleTotal=0;
       rows.forEach(row=>{
         const src=rowSource(row),matchSource=source==='all'||source===src,matchText=!term||(row.textContent||'').toLocaleLowerCase('it-IT').includes(term),visible=matchSource&&matchText;
-        row.hidden=!visible;if(visible)visibleTotal++;
+        if(row.hidden===visible)row.hidden=!visible;if(visible)visibleTotal++;
         let badge=row.querySelector('[data-gon-source-badge]');if(!badge){badge=document.createElement('span');badge.dataset.gonSourceBadge='1';badge.className='gon-archive-source '+src;badge.textContent=src==='timer'?'Timer':'Normale';const meta=row.querySelector('.gon-history-meta');if(meta)meta.append(badge);}
         const key=monthKey(row);if(!groups.has(key))groups.set(key,[]);groups.get(key).push(row);
       });
       historyObserver?.disconnect();list.replaceChildren();let firstVisible=true;
-      for(const [key,items] of groups){const shown=items.filter(x=>!x.hidden);if(!shown.length)continue;
-        const group=document.createElement('details');group.className='gon-archive-month';group.open=firstVisible;firstVisible=false;
+      for(const [key,items] of groups){
+        const shown=items.filter(x=>!x.hidden),group=document.createElement('details');group.className='gon-archive-month';group.hidden=!shown.length;group.open=Boolean(shown.length&&firstVisible);if(shown.length)firstVisible=false;
         const summary=document.createElement('summary');summary.innerHTML=`<span>${esc(monthLabel(key))}</span><span class="gon-history-meta">${shown.length} ${shown.length===1?'voce':'voci'}</span>`;
         const body=document.createElement('div');body.className='gon-archive-month-list';items.forEach(x=>body.append(x));group.append(summary,body);list.append(group);
       }
@@ -77,11 +77,13 @@
   function organizeTimer(){
     timerScheduled=false;if(timerBusy)return;const panel=$('gonTimerDrafts');if(!panel)return;timerBusy=true;
     try{
-      panel.classList.add('gon-timer-pending');const title=panel.querySelector('h2');if(title)title.textContent='Timer da completare';
-      const note=[...panel.querySelectorAll('p.timer-note')].find(x=>x.id!=='gonTimerMessage');if(note)note.textContent='Qui restano soltanto le attività da sincronizzare o completare. Le attività concluse sono nello Storico attività.';
-      let visible=0;panel.querySelectorAll('.timer-row').forEach(row=>{const text=row.querySelector('p')?.textContent||'';const completed=/—\s*Completata\s*$/i.test(text);row.hidden=completed;if(!completed)visible++;});
-      let badge=panel.querySelector('[data-gon-timer-pending-count]');if(!badge&&title){badge=document.createElement('span');badge.dataset.gonTimerPendingCount='1';badge.className='gon-timer-pending-count';title.append(badge);}if(badge)badge.textContent=visible?String(visible):'';
-      const retry=$('gonTimerRetry'),pending=Boolean(retry&&!retry.hidden),msg=$('gonTimerMessage'),error=Boolean(msg?.classList.contains('timer-error')&&msg.textContent.trim());const shouldShow=visible>0||pending||error;
+      panel.classList.add('gon-timer-pending');const title=panel.querySelector('h2');
+      if(title&&title.dataset.gonTimerTitle!=='1'){title.textContent='Timer da completare';title.dataset.gonTimerTitle='1';}
+      const note=[...panel.querySelectorAll('p.timer-note')].find(x=>x.id!=='gonTimerMessage');
+      if(note&&note.dataset.gonTimerNote!=='1'){note.textContent='Qui restano soltanto le attività da sincronizzare o completare. Le attività concluse sono nello Storico attività.';note.dataset.gonTimerNote='1';}
+      let visible=0;panel.querySelectorAll('.timer-row').forEach(row=>{const text=row.querySelector('p')?.textContent||'';const completed=/—\s*Completata\s*$/i.test(text);if(row.hidden!==completed)row.hidden=completed;if(!completed)visible++;});
+      let badge=panel.querySelector('[data-gon-timer-pending-count]');if(!badge&&title){badge=document.createElement('span');badge.dataset.gonTimerPendingCount='1';badge.className='gon-timer-pending-count';title.append(badge);}const badgeText=visible?String(visible):'';if(badge&&badge.textContent!==badgeText)badge.textContent=badgeText;
+      const retry=$('gonTimerRetry'),pending=Boolean(retry&&!retry.hidden),msg=$('gonTimerMessage'),error=Boolean(msg?.classList.contains('timer-error')&&msg.textContent.trim()),shouldShow=visible>0||pending||error;
       if(panel.hidden===shouldShow)panel.hidden=!shouldShow;
     }finally{timerBusy=false;}
   }
