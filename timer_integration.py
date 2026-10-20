@@ -1,4 +1,4 @@
-"""Integrate timer, form-state protection, and personal-history assets."""
+"""Integrate timer, form-state protection, personal history, and compact archive presentation."""
 from hashlib import sha256
 from pathlib import Path
 import json
@@ -11,6 +11,7 @@ import tempfile
 VERSION = 'timer-1.1.1'
 FORM_GUARD_VERSION = 'form-state-guard-1.1.0'
 HISTORY_VERSION = 'personal-history-1.0.0'
+ORGANIZER_VERSION = 'history-organizer-1.0.0'
 
 
 def _script_tag(filename: str, version: str) -> str:
@@ -36,6 +37,7 @@ def patch_page(html: str) -> str:
     html = _install_tag(html, 'form-state-guard.js', FORM_GUARD_VERSION)
     html = _install_tag(html, 'personal-history.js', HISTORY_VERSION)
     html = _install_tag(html, 'activity-timer.js', VERSION)
+    html = _install_tag(html, 'history-organizer.js', ORGANIZER_VERSION)
     return html
 
 
@@ -59,6 +61,7 @@ def install_timer(out: Path) -> None:
         'activity-timer.js': (VERSION, f"const VERSION = '{VERSION}'"),
         'form-state-guard.js': (FORM_GUARD_VERSION, f"const VERSION='{FORM_GUARD_VERSION}'"),
         'personal-history.js': (HISTORY_VERSION, f"const VERSION='{HISTORY_VERSION}'"),
+        'history-organizer.js': (ORGANIZER_VERSION, f"const VERSION='{ORGANIZER_VERSION}'"),
     }
     root = Path(__file__).resolve().parent
     target = out / 'assets'
@@ -87,11 +90,16 @@ def install_timer(out: Path) -> None:
         'timer_version': VERSION,
         'form_guard_version': FORM_GUARD_VERSION,
         'personal_history_version': HISTORY_VERSION,
+        'history_organizer_version': ORGANIZER_VERSION,
         'hashes': hashes,
         'inline_syntax_checked': bool(node),
         'recorder_pages': ['mobile.html'],
         'timer_management_pages': ['pc.html', 'mobile.html'],
         'personal_history_pages': ['pc.html', 'mobile.html'],
+        'history_archive_default': 'collapsed',
+        'history_archive_grouping': 'month',
+        'history_archive_filters': ['source', 'text'],
+        'timer_archive_surface': 'pending_or_incomplete_only',
         'form_state_guard_pages': ['pc.html', 'mobile.html'],
         'supports_incomplete_timer_deletion': True,
     }
