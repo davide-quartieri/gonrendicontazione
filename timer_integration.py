@@ -1,4 +1,4 @@
-"""Integrate timer, form-state protection, personal history, and compact archive presentation."""
+"""Integrate timer, form-state protection, personal history, compact archive presentation, and the seven-day latest-activity window."""
 from hashlib import sha256
 from pathlib import Path
 import json
@@ -12,6 +12,7 @@ VERSION = 'timer-1.1.1'
 FORM_GUARD_VERSION = 'form-state-guard-1.1.0'
 HISTORY_VERSION = 'personal-history-1.0.0'
 ORGANIZER_VERSION = 'history-organizer-1.0.0'
+LATEST_WEEK_VERSION = 'latest-activities-week-1.0.0'
 
 
 def _script_tag(filename: str, version: str) -> str:
@@ -38,6 +39,7 @@ def patch_page(html: str) -> str:
     html = _install_tag(html, 'personal-history.js', HISTORY_VERSION)
     html = _install_tag(html, 'activity-timer.js', VERSION)
     html = _install_tag(html, 'history-organizer.js', ORGANIZER_VERSION)
+    html = _install_tag(html, 'latest-activities-week.js', LATEST_WEEK_VERSION)
     return html
 
 
@@ -62,6 +64,7 @@ def install_timer(out: Path) -> None:
         'form-state-guard.js': (FORM_GUARD_VERSION, f"const VERSION='{FORM_GUARD_VERSION}'"),
         'personal-history.js': (HISTORY_VERSION, f"const VERSION='{HISTORY_VERSION}'"),
         'history-organizer.js': (ORGANIZER_VERSION, f"const VERSION='{ORGANIZER_VERSION}'"),
+        'latest-activities-week.js': (LATEST_WEEK_VERSION, f"const VERSION = '{LATEST_WEEK_VERSION}'"),
     }
     root = Path(__file__).resolve().parent
     target = out / 'assets'
@@ -91,6 +94,7 @@ def install_timer(out: Path) -> None:
         'form_guard_version': FORM_GUARD_VERSION,
         'personal_history_version': HISTORY_VERSION,
         'history_organizer_version': ORGANIZER_VERSION,
+        'latest_activities_version': LATEST_WEEK_VERSION,
         'hashes': hashes,
         'inline_syntax_checked': bool(node),
         'recorder_pages': ['mobile.html'],
@@ -100,6 +104,8 @@ def install_timer(out: Path) -> None:
         'history_archive_grouping': 'month',
         'history_archive_filters': ['source', 'text'],
         'timer_archive_surface': 'pending_or_incomplete_only',
+        'latest_activities_window_days': 7,
+        'latest_activities_basis': 'activity_date',
         'form_state_guard_pages': ['pc.html', 'mobile.html'],
         'supports_incomplete_timer_deletion': True,
     }
