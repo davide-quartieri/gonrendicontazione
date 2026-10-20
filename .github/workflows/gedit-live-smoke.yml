@@ -10,31 +10,38 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - name: Read deployed manifest and verify every asset hash
+      - name: Read deployed manifest and retain public bytes
         run: |
           python - <<'PY'
-          import json,hashlib,urllib.request
+          import json,hashlib,urllib.request,pathlib
           base='https://gon-rendicontazione-live.onrender.com/'
+          root=pathlib.Path('live');root.mkdir()
           def read(path):
-              with urllib.request.urlopen(base+path,timeout=30) as r:
+              req=urllib.request.Request(base+path+'?verify=b222c0a4',headers={'Cache-Control':'no-cache','Accept-Encoding':'identity'})
+              with urllib.request.urlopen(req,timeout=30) as r:
                   assert r.status==200
                   return r.read()
           m=json.loads(read('gedit-packages-build.json'))
           assert m['version']=='gedit-packages-1.0.0'
           assert m['commit']=='b222c0a4f7c38794453d5079757884dfeaf73b8d'
+          checks=[]
           for name,expected in m['hashes'].items():
               path=name if name.endswith('.html') else 'assets/'+name
-              data=read(path)
-              assert hashlib.sha256(data).hexdigest()==expected,path
-          pc=read('pc.html').decode()
+              data=read(path);(root/name).write_bytes(data)
+              checks.append({'name':name,'expected':expected,'actual':hashlib.sha256(data).hexdigest(),'size':len(data)})
+          (root/'verification.json').write_text(json.dumps({'manifest':m,'checks':checks},indent=2))
+          print(json.dumps(checks,indent=2))
+          for check in checks:
+              assert check['actual']==check['expected'],check
+          pc=(root/'pc.html').read_text()
           assert 'periodic_package_code:packageCode' in pc
           assert 'gedit-packages.js' in pc and 'history-organizer.js' in pc and 'latest-activities-week.js' in pc
           assert 'id="clienti"' not in pc
-          print('PASS: deployed manifest, 5 asset hashes, manual field, existing history modules, no client editor')
-          open('gedit-live-verification.json','w').write(json.dumps(m,indent=2))
+          print('PASS: exact deployed manifest and five public assets')
           PY
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
         with:
           name: gedit-live-verification
-          path: gedit-live-verification.json
+          path: live/
           retention-days: 7
