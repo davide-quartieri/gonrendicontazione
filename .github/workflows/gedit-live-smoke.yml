@@ -1,0 +1,40 @@
+name: GEDIT live verification
+on:
+  push:
+    branches: [feature/gedit-package-classification]
+    paths: [.github/workflows/gedit-live-smoke.yml]
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Read deployed manifest and verify every asset hash
+        run: |
+          python - <<'PY'
+          import json,hashlib,urllib.request
+          base='https://gon-rendicontazione-live.onrender.com/'
+          def read(path):
+              with urllib.request.urlopen(base+path,timeout=30) as r:
+                  assert r.status==200
+                  return r.read()
+          m=json.loads(read('gedit-packages-build.json'))
+          assert m['version']=='gedit-packages-1.0.0'
+          assert m['commit']=='b222c0a4f7c38794453d5079757884dfeaf73b8d'
+          for name,expected in m['hashes'].items():
+              path=name if name.endswith('.html') else 'assets/'+name
+              data=read(path)
+              assert hashlib.sha256(data).hexdigest()==expected,path
+          pc=read('pc.html').decode()
+          assert 'periodic_package_code:packageCode' in pc
+          assert 'gedit-packages.js' in pc and 'history-organizer.js' in pc and 'latest-activities-week.js' in pc
+          assert 'id="clienti"' not in pc
+          print('PASS: deployed manifest, 5 asset hashes, manual field, existing history modules, no client editor')
+          open('gedit-live-verification.json','w').write(json.dumps(m,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gedit-live-verification
+          path: gedit-live-verification.json
+          retention-days: 7
