@@ -96,15 +96,15 @@
       let considered = 0;
 
       for (const tbody of card.querySelectorAll('tbody')) {
-        tbody.querySelectorAll('tr.gon-latest-week-empty').forEach(row => row.remove());
-        const rows = [...tbody.querySelectorAll(':scope > tr')];
+        const emptyRow = tbody.querySelector(':scope > tr.gon-latest-week-empty');
+        const rows = [...tbody.querySelectorAll(':scope > tr:not(.gon-latest-week-empty)')];
         let bodyVisible = 0;
 
         for (const row of rows) {
           if (!row.querySelector('td')) continue;
           const date = rowDate(row);
           const show = Boolean(date && date >= start && date <= end);
-          row.hidden = !show;
+          if (row.hidden === show) row.hidden = !show;
           considered += 1;
           if (show) {
             visible += 1;
@@ -113,18 +113,23 @@
         }
 
         if (rows.length && bodyVisible === 0) {
-          const empty = document.createElement('tr');
-          empty.className = 'gon-latest-week-empty';
-          const cell = document.createElement('td');
-          cell.colSpan = Math.max(1, tbody.closest('table')?.querySelectorAll('thead th').length || 1);
-          cell.textContent = `Nessuna attività con data negli ultimi ${DAYS} giorni.`;
-          empty.append(cell);
-          tbody.append(empty);
+          if (!emptyRow) {
+            const empty = document.createElement('tr');
+            empty.className = 'gon-latest-week-empty';
+            const cell = document.createElement('td');
+            cell.colSpan = Math.max(1, tbody.closest('table')?.querySelectorAll('thead th').length || 1);
+            cell.textContent = `Nessuna attività con data negli ultimi ${DAYS} giorni.`;
+            empty.append(cell);
+            tbody.append(empty);
+          }
+        } else if (emptyRow) {
+          emptyRow.remove();
         }
       }
 
       const badge = note?.querySelector('[data-gon-latest-week-count]');
-      if (badge) badge.textContent = considered ? `${visible} ${visible === 1 ? 'attività' : 'attività'}` : '';
+      const badgeText = considered ? `${visible} attività` : '';
+      if (badge && badge.textContent !== badgeText) badge.textContent = badgeText;
       card.dataset.gonLatestWeek = '1';
       observeCard(card);
     } finally {
