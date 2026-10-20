@@ -15,7 +15,7 @@
       .gon-archive-months{display:grid!important;gap:10px!important}.gon-archive-month{border:1px solid #d9e2ec;border-radius:12px;overflow:hidden;background:#fff}.gon-archive-month>summary{cursor:pointer;list-style:none;padding:11px 13px;background:#f7f9fc;display:flex;justify-content:space-between;gap:10px;font-weight:800;text-transform:capitalize}.gon-archive-month>summary::-webkit-details-marker{display:none}
       .gon-archive-month-list{display:grid}.gon-archive-month-list>.gon-history-row{border:0!important;border-top:1px solid #e7edf3!important;border-radius:0!important;margin:0!important}.gon-archive-month-list>.gon-history-row:first-child{border-top:0!important}
       .gon-archive-empty{padding:16px;border:1px dashed #c7d5e3;border-radius:12px;color:#667085;text-align:center}.gon-archive-source{display:inline-flex;border-radius:999px;padding:2px 7px;font-size:11px;font-weight:800;margin-left:6px}.gon-archive-source.manual{background:#eaf3fa;color:#155f96}.gon-archive-source.timer{background:#eef4e8;color:#356b22}
-      #gonTimerDrafts.gon-timer-pending>h2{margin-bottom:4px!important}.gon-timer-pending-count{display:inline-flex;margin-left:8px;border-radius:999px;padding:3px 8px;font-size:12px;font-weight:800;background:#fff4e5;color:#9a5200}
+      #gonTimerDrafts.gon-timer-pending>h2{margin-bottom:4px!important}.gon-timer-pending-count{display:inline-flex;margin-left:8px;border-radius:999px;padding:3px 8px;font-size:12px;font-weight:800;background:#fff4e5;color:#9a5200}.gon-timer-archive-toggle{margin-top:10px}
       @media(max-width:650px){.gon-archive-head{align-items:flex-start;flex-direction:column}.gon-archive-head-right{width:100%}.gon-archive-head-right button{flex:1}.gon-archive-tools{grid-template-columns:1fr}}
     `;document.head.append(style);
   }
@@ -80,10 +80,13 @@
       panel.classList.add('gon-timer-pending');const title=panel.querySelector('h2');
       if(title&&title.dataset.gonTimerTitle!=='1'){title.textContent='Timer da completare';title.dataset.gonTimerTitle='1';}
       const note=[...panel.querySelectorAll('p.timer-note')].find(x=>x.id!=='gonTimerMessage');
-      if(note&&note.dataset.gonTimerNote!=='1'){note.textContent='Qui restano soltanto le attività da sincronizzare o completare. Le attività concluse sono nello Storico attività.';note.dataset.gonTimerNote='1';}
-      let visible=0;panel.querySelectorAll('.timer-row').forEach(row=>{const text=row.querySelector('p')?.textContent||'';const completed=/—\s*Completata\s*$/i.test(text);if(row.hidden!==completed)row.hidden=completed;if(!completed)visible++;});
+      if(note&&note.dataset.gonTimerNote!=='1'){note.textContent='Qui restano le attività da sincronizzare o completare. Le completate sono nello Storico attività; apri l’archivio timer solo se devi eliminarle.';note.dataset.gonTimerNote='1';}
+      const rows=[...panel.querySelectorAll('.timer-row')],showCompleted=panel.dataset.gonShowCompleted==='1';let visible=0,completedCount=0;
+      rows.forEach(row=>{const text=row.querySelector('p')?.textContent||'',completed=/—\s*Completata\s*$/i.test(text);if(completed)completedCount++;else visible++;const hide=completed&&!showCompleted;if(row.hidden!==hide)row.hidden=hide;});
       let badge=panel.querySelector('[data-gon-timer-pending-count]');if(!badge&&title){badge=document.createElement('span');badge.dataset.gonTimerPendingCount='1';badge.className='gon-timer-pending-count';title.append(badge);}const badgeText=visible?String(visible):'';if(badge&&badge.textContent!==badgeText)badge.textContent=badgeText;
-      const retry=$('gonTimerRetry'),pending=Boolean(retry&&!retry.hidden),msg=$('gonTimerMessage'),error=Boolean(msg?.classList.contains('timer-error')&&msg.textContent.trim()),shouldShow=visible>0||pending||error;
+      let archive=panel.querySelector('[data-gon-timer-archive]');if(!archive){archive=document.createElement('button');archive.type='button';archive.className='btn light gon-timer-archive-toggle';archive.dataset.gonTimerArchive='1';archive.onclick=()=>{panel.dataset.gonShowCompleted=panel.dataset.gonShowCompleted==='1'?'0':'1';scheduleTimer();};const retry=$('gonTimerRetry');panel.insertBefore(archive,retry||null);}
+      const archiveText=showCompleted?`Nascondi completate (${completedCount})`:`Mostra completate (${completedCount})`;if(archive.textContent!==archiveText)archive.textContent=archiveText;if(archive.hidden===(completedCount>0))archive.hidden=completedCount===0;
+      const retry=$('gonTimerRetry'),pending=Boolean(retry&&!retry.hidden),msg=$('gonTimerMessage'),error=Boolean(msg?.classList.contains('timer-error')&&msg.textContent.trim()),shouldShow=rows.length>0||pending||error;
       if(panel.hidden===shouldShow)panel.hidden=!shouldShow;
     }finally{timerBusy=false;}
   }
