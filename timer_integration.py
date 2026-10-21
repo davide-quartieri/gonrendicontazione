@@ -12,6 +12,7 @@ VERSION = 'timer-1.1.1'
 FORM_GUARD_VERSION = 'form-state-guard-1.1.0'
 HISTORY_VERSION = 'personal-history-1.0.0'
 ORGANIZER_VERSION = 'history-organizer-1.0.0'
+PERIODIC_SERVICES_VERSION = 'periodic-services-1.0.0'
 LATEST_WEEK_VERSION = 'latest-activities-week-1.0.0'
 
 
@@ -39,6 +40,7 @@ def patch_page(html: str) -> str:
     html = _install_tag(html, 'personal-history.js', HISTORY_VERSION)
     html = _install_tag(html, 'activity-timer.js', VERSION)
     html = _install_tag(html, 'history-organizer.js', ORGANIZER_VERSION)
+    html = _install_tag(html, 'periodic-services.js', PERIODIC_SERVICES_VERSION)
     html = _install_tag(html, 'latest-activities-week.js', LATEST_WEEK_VERSION)
     return html
 
@@ -64,6 +66,7 @@ def install_timer(out: Path) -> None:
         'form-state-guard.js': (FORM_GUARD_VERSION, f"const VERSION='{FORM_GUARD_VERSION}'"),
         'personal-history.js': (HISTORY_VERSION, f"const VERSION='{HISTORY_VERSION}'"),
         'history-organizer.js': (ORGANIZER_VERSION, f"const VERSION='{ORGANIZER_VERSION}'"),
+        'periodic-services.js': (PERIODIC_SERVICES_VERSION, f"const VERSION='{PERIODIC_SERVICES_VERSION}'"),
         'latest-activities-week.js': (LATEST_WEEK_VERSION, f"const VERSION = '{LATEST_WEEK_VERSION}'"),
     }
     root = Path(__file__).resolve().parent
@@ -94,6 +97,7 @@ def install_timer(out: Path) -> None:
         'form_guard_version': FORM_GUARD_VERSION,
         'personal_history_version': HISTORY_VERSION,
         'history_organizer_version': ORGANIZER_VERSION,
+        'periodic_services_version': PERIODIC_SERVICES_VERSION,
         'latest_activities_version': LATEST_WEEK_VERSION,
         'hashes': hashes,
         'inline_syntax_checked': bool(node),
@@ -104,6 +108,7 @@ def install_timer(out: Path) -> None:
         'history_archive_grouping': 'month',
         'history_archive_filters': ['source', 'text'],
         'timer_archive_surface': 'pending_or_incomplete_only',
+        'periodic_service_selector_pages': ['pc.html', 'mobile.html'],
         'latest_activities_window_days': 7,
         'latest_activities_basis': 'activity_date',
         'form_state_guard_pages': ['pc.html', 'mobile.html'],
